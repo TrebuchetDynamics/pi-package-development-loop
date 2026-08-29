@@ -1057,10 +1057,16 @@ async function testSkills() {
   assert.match(s3upload, /no Markdown link/);
 
   const gitCommitPush = read("skills/delivery/git-commit-push/SKILL.md");
-  assert.ok(gitCommitPush.length < 9000, "git-commit-push must stay action-first and readable");
-  assert.match(gitCommitPush, /Ship local Git changes by inspecting, polishing, validating, split-committing, and pushing/);
-  assert.match(gitCommitPush, /local changes are the delivery queue, not a reason to return `review_needed`/);
+  assert.ok(gitCommitPush.length < 5500, "git-commit-push must stay fast and readable");
+  assert.ok(gitCommitPush.trimEnd().split(/\r?\n/).length <= 100, "git-commit-push must keep the delivery path compact");
+  assert.match(gitCommitPush, /Ship local Git changes with one inspection and validation pass/);
+  assert.match(gitCommitPush, /local changes are the delivery queue, not a reason to return `review_needed`/i);
   assert.match(gitCommitPush, /Do not ask for approval merely because there are many changed files/);
+  assert.match(gitCommitPush, /Use fresh existing receipts only when they cover the unchanged content and required commands/);
+  assert.match(gitCommitPush, /Stage explicit paths or hunks/);
+  assert.match(gitCommitPush, /Inspect `git diff --cached --name-status` and the cached diff/);
+  assert.match(gitCommitPush, /If a hook or repair changes validated content, rerun only affected checks/);
+  assert.doesNotMatch(gitCommitPush, /run the full validation set after the final commit/i);
   assert.match(gitCommitPush, /If any safe topic was pushed, the overall decision is `shipped`/);
   assert.match(gitCommitPush, /`review_needed` is valid only when no safe topic can be isolated/);
   assert.match(gitCommitPush, /A list of uncommitted paths is not a blocker explanation/);
@@ -1073,12 +1079,9 @@ async function testSkills() {
   assert.match(gitCommitPush, /modified and untracked paths/);
   assert.match(gitCommitPush, /no more than three human-readable lines/);
   assert.match(gitCommitPush, /do not repeat the same hash, branch, path, or decision/);
-  assert.match(gitCommitPush, /Never print separate Mode, Scope, Delivery, Unblocked, Final state, or Completion audit sections/);
-  assert.match(gitCommitPush, /do not ask the user to "review" a schema/);
-  assert.match(gitCommitPush, /Reply `yes` to ship it or `no` to leave it local/);
+  assert.match(gitCommitPush, /reply `yes` to ship or `no` to leave local/);
   assert.match(gitCommitPush, /at most three numbered options/);
   assert.match(gitCommitPush, /Do not deploy, publish, release, force-push, rewrite history, rebase, merge divergent history/);
-  assert.match(gitCommitPush, /UI, MapLibre, Maestro, test, and documentation changes/);
 }
 
 async function testDocsAndNotices() {
