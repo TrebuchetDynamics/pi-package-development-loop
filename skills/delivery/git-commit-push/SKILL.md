@@ -9,7 +9,7 @@ Ship finished work without turning delivery into another project. Local changes 
 
 ## Mode
 
-- **Ship (default):** an explicit commit, push, or ship request authorizes inspecting, safely polishing, committing, and pushing in-scope work.
+- **Ship (default):** invoking this skill is the ship request. Inspect, safely polish, commit, and push in-scope work.
 - **Audit:** only for audit, status, review, dry-run, or no-push requests. Do not stage, commit, or push.
 - **Continuation:** resolve the blocker named by the prior `GIT_COMMIT_PUSH_DECISION`, then resume the approved ship request.
 
@@ -72,7 +72,7 @@ Audit mode starts with `AUDIT — <what would happen>` and never mutates Git. Fo
 
 ## Example
 
-User: “Ship these changes.” Agent: inspect every path, validate once, make coherent commits, push, and return hashes plus final status.
+User invokes this skill with local changes. Agent: inspect every path, validate once, make coherent commits, push, and return hashes plus final status.
 
 ## Shared contract
 

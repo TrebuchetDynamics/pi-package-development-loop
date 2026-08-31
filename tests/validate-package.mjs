@@ -1062,6 +1062,7 @@ async function testSkills() {
   assert.match(gitCommitPush, /Ship local Git changes with one inspection and validation pass/);
   assert.match(gitCommitPush, /local changes are the delivery queue, not a reason to return `review_needed`/i);
   assert.match(gitCommitPush, /Do not ask for approval merely because there are many changed files/);
+  assert.match(gitCommitPush, /invoking this skill is the ship request/);
   assert.match(gitCommitPush, /Use fresh existing receipts only when they cover the unchanged content and required commands/);
   assert.match(gitCommitPush, /Stage explicit paths or hunks/);
   assert.match(gitCommitPush, /Inspect `git diff --cached --name-status` and the cached diff/);
