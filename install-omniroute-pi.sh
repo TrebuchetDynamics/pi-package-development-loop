@@ -6,10 +6,12 @@ set -eu
 
 : "${HOME:?HOME is required}"
 
+agent_dir="${PI_CODING_AGENT_DIR:-${HOME}/.pi/agent}"
+models_file="${agent_dir}/models.json"
 base_url="${OMNIROUTE_PI_BASE_URL:-http://127.0.0.1:20128/v1}"
 # ponytail: the free pool handles per-model 401/429/504 failures without paid fallback.
 model="${OMNIROUTE_PI_MODEL:-auto/best-free}"
-api_key="${OMNIROUTE_PI_API_KEY:-omniroute-local}"
+api_key="${OMNIROUTE_PI_API_KEY:-}"
 max_heavy="${OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT:-8}"
 server_host="${OMNIROUTE_SERVER_HOST:-127.0.0.1}"
 config_only=0
@@ -27,7 +29,7 @@ Options:
   -h, --help       Show this help
 
 Environment:
-  OMNIROUTE_PI_API_KEY                 Endpoint key; local installs default to omniroute-local
+  OMNIROUTE_PI_API_KEY                 Endpoint key; defaults to the existing Pi key, then omniroute-local
   OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT   Concurrent large chats (default: 8)
   OMNIROUTE_SERVER_HOST                Local bind address (default: 127.0.0.1)
   PI_CODING_AGENT_DIR                  Pi config directory (default: ~/.pi/agent)
@@ -96,6 +98,23 @@ process.exit(supported ? 0 : 1);
   }
 fi
 
+if [ -z "$api_key" ] && [ -f "$models_file" ]; then
+  api_key="$(PI_MODELS_FILE="$models_file" OMNIROUTE_BASE_URL="$base_url" node <<'NODE'
+import fs from "node:fs";
+
+const config = JSON.parse(fs.readFileSync(process.env.PI_MODELS_FILE, "utf8"));
+const provider = config?.providers?.omniroute;
+const key = provider?.apiKey;
+const sameOrigin = typeof provider?.baseUrl === "string" &&
+  new URL(provider.baseUrl).origin === new URL(process.env.OMNIROUTE_BASE_URL).origin;
+if (sameOrigin && typeof key === "string" && !key.includes("$") && !key.startsWith("!")) {
+  process.stdout.write(key);
+}
+NODE
+)"
+fi
+api_key="${api_key:-omniroute-local}"
+
 requested_base_url="${base_url%/}"
 base_url="$(
   OMNIROUTE_BASE_URL="$requested_base_url" OMNIROUTE_KEY="$api_key" node 2>/dev/null <<'NODE'
@@ -143,7 +162,7 @@ const response = await fetch(process.env.CATALOG_URL, {
   headers: { Authorization: `Bearer ${process.env.OMNIROUTE_KEY}` },
   signal: AbortSignal.timeout(2000),
 });
-process.exit(response.ok ? 0 : 1);
+process.exit(response.status < 500 ? 0 : 1);
 NODE
 }
 catalog_ready() {
@@ -152,10 +171,38 @@ const response = await fetch(process.env.CATALOG_URL, {
   headers: { Authorization: `Bearer ${process.env.OMNIROUTE_KEY}` },
   signal: AbortSignal.timeout(2000),
 });
-if (!response.ok) process.exit(1);
-const payload = await response.json();
-process.exit(payload.data?.some((entry) => entry.id === process.env.OMNIROUTE_MODEL) ? 0 : 1);
+if (response.status === 401 || response.status === 403) process.exit(10);
+if (!response.ok) process.exit(11);
+try {
+  const payload = await response.json();
+  process.exit(payload.data?.some((entry) => entry.id === process.env.OMNIROUTE_MODEL) ? 0 : 12);
+} catch {
+  process.exit(13);
+}
 NODE
+}
+create_local_api_key() {
+  key_output="$(mktemp "${TMPDIR:-/tmp}/omniroute-pi-key.XXXXXX")"
+  trap 'rm -f "$key_output"' EXIT
+  trap 'rm -f "$key_output"; exit 1' HUP INT TERM
+  management_url="${base_url%/v1}"
+  if ! omniroute --output json --quiet --base-url "$management_url" api api-keys post-api-keys --body '{"name":"Pi (pi-toolset)"}' > "$key_output"; then
+    return 1
+  fi
+  generated_key="$(OMNIROUTE_KEY_OUTPUT="$key_output" node <<'NODE'
+import fs from "node:fs";
+
+const text = fs.readFileSync(process.env.OMNIROUTE_KEY_OUTPUT, "utf8");
+const start = text.indexOf("{");
+if (start < 0) process.exit(1);
+const payload = JSON.parse(text.slice(start));
+if (typeof payload.key !== "string" || !payload.key) process.exit(1);
+process.stdout.write(payload.key);
+NODE
+)" || return 1
+  rm -f "$key_output"
+  trap - EXIT HUP INT TERM
+  api_key="$generated_key"
 }
 
 if [ "$config_only" = "0" ]; then
@@ -226,13 +273,23 @@ NODE
   fi
 fi
 
-if ! catalog_ready; then
-  printf 'install-omniroute-pi: route %s is unavailable at %s\n' "$model" "$catalog_url" >&2
-  exit 1
+catalog_status=0
+catalog_ready || catalog_status=$?
+if [ "$catalog_status" -ne 0 ]; then
+  case "$base_url:$config_only:$catalog_status" in
+    http://127.0.0.1:*:0:10|http://localhost:*:0:10)
+      if ! create_local_api_key || ! catalog_ready; then
+        printf 'install-omniroute-pi: could not create a working local API key for %s\n' "$catalog_url" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      printf 'install-omniroute-pi: route %s is unavailable at %s\n' "$model" "$catalog_url" >&2
+      exit 1
+      ;;
+  esac
 fi
 
-agent_dir="${PI_CODING_AGENT_DIR:-${HOME}/.pi/agent}"
-models_file="${agent_dir}/models.json"
 mkdir -p "$agent_dir"
 
 PI_MODELS_FILE="$models_file" OMNIROUTE_BASE_URL="$base_url" OMNIROUTE_KEY="$api_key" OMNIROUTE_MODEL="$model" node <<'NODE'
@@ -294,6 +351,16 @@ if (settingsBefore.trim()) settings = JSON.parse(settingsBefore);
 if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error(`${settingsFile} must contain a JSON object`);
 settings.defaultProvider = "omniroute";
 settings.defaultModel = process.env.OMNIROUTE_MODEL;
+const retry = settings.retry && typeof settings.retry === "object" && !Array.isArray(settings.retry)
+  ? settings.retry
+  : {};
+// ponytail: 5s clears OmniRoute's transient model lockout before Pi retries the route.
+settings.retry = {
+  ...retry,
+  enabled: typeof retry.enabled === "boolean" ? retry.enabled : true,
+  maxRetries: Number.isInteger(retry.maxRetries) ? retry.maxRetries : 3,
+  baseDelayMs: Number.isFinite(retry.baseDelayMs) ? retry.baseDelayMs : 5000,
+};
 const settingsAfter = `${JSON.stringify(settings, null, 2)}\n`;
 if (settingsBefore !== settingsAfter) {
   if (settingsBefore) {

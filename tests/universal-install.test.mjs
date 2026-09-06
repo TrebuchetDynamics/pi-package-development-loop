@@ -15,8 +15,12 @@ assert.match(installer, /install-agent-skills\.sh/);
 assert.doesNotMatch(installer, /install-autofolderrefactor\.sh/, "autofolderrefactor must remain opt-in");
 assert.match(installer, /install-omniroute-pi\.sh/);
 assert.match(installer, /RTK_INSTALL_URL/);
+assert.match(installer, /PI_TOOLSET_ARCHIVE_URL/);
+assert.match(installer, /apt-get install -y ca-certificates curl git tar/);
 const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
 assert.match(readme, /sh install\.sh/);
+assert.match(readme, /new Ubuntu PC/);
+assert.match(readme, /raw\.githubusercontent\.com\/TrebuchetDynamics\/pi-toolset\/main\/install\.sh/);
 assert.match(readme, /Pi, this package, tmux with `tx`, Search Hub, Understand-Anything, RTK, OmniRoute, and global Codex\/Claude skill copies/);
 
 function run(args, options = {}) {
@@ -37,7 +41,8 @@ assert.match(help, /Search Hub/);
 assert.match(help, /Understand-Anything/);
 assert.match(help, /RTK/);
 assert.match(help, /OmniRoute/);
-assert.match(help, /Codex and Claude/);
+assert.match(help, /Pi, Codex and Claude/);
+assert.match(help, /Ponytail/);
 assert.doesNotMatch(help, /autofolderrefactor/);
 
 const dryHome = fs.mkdtempSync(path.join(os.tmpdir(), "pi-goal-install-dry-"));
@@ -61,6 +66,45 @@ try {
   assert.doesNotMatch(skippedOutput, /would install: OmniRoute/);
 } finally {
   fs.rmSync(dryHome, { recursive: true, force: true });
+}
+
+const bootstrap = fs.mkdtempSync(path.join(os.tmpdir(), "pi-toolset-bootstrap-test-"));
+try {
+  const remoteScript = path.join(bootstrap, "install.sh");
+  const archiveTree = path.join(bootstrap, "archive", "pi-toolset-main");
+  const archive = path.join(bootstrap, "pi-toolset.tar.gz");
+  const fakeBin = path.join(bootstrap, "bin");
+  const home = path.join(bootstrap, "home");
+  fs.copyFileSync(path.join(root, "install.sh"), remoteScript);
+  fs.mkdirSync(path.join(archiveTree, "tmux"), { recursive: true });
+  fs.mkdirSync(fakeBin);
+  fs.mkdirSync(home);
+  fs.copyFileSync(path.join(root, "install.sh"), path.join(archiveTree, "install.sh"));
+  fs.writeFileSync(path.join(archiveTree, "install-agent-skills.sh"), "#!/bin/sh\n");
+  fs.writeFileSync(path.join(archiveTree, "install-omniroute-pi.sh"), "#!/bin/sh\n");
+  fs.writeFileSync(path.join(archiveTree, "tmux", "install.sh"), "#!/bin/sh\n");
+  const packed = spawnSync("tar", ["-czf", archive, "-C", path.dirname(archiveTree), path.basename(archiveTree)]);
+  assert.equal(packed.status, 0, packed.stderr?.toString());
+  fs.writeFileSync(
+    path.join(fakeBin, "curl"),
+    "#!/bin/sh\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = -o ]; then shift; cp \"$BOOTSTRAP_ARCHIVE\" \"$1\"; exit; fi\n  shift\ndone\nexit 2\n",
+    { mode: 0o755 },
+  );
+  const result = spawnSync("sh", [remoteScript], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HOME: home,
+      PATH: `${fakeBin}:/usr/bin:/bin`,
+      BOOTSTRAP_ARCHIVE: archive,
+      PI_TOOLSET_SKIP: "pi,package,tmux,understand,rtk,skills,omniroute",
+    },
+  });
+  assert.equal(result.status, 0, `bootstrap failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  assert.match(result.stdout, /downloading: pi-toolset/);
+  assert.match(result.stdout, /installation complete/);
+} finally {
+  fs.rmSync(bootstrap, { recursive: true, force: true });
 }
 
 const partialHome = fs.mkdtempSync(path.join(os.tmpdir(), "pi-goal-install-partial-"));
@@ -103,7 +147,7 @@ try {
   fs.mkdirSync(agentDir, { recursive: true });
   fs.writeFileSync(
     path.join(agentDir, "settings.json"),
-    `${JSON.stringify({ theme: "keep", packages: ["git:github.com/TrebuchetDynamics/pi-toolset", { source: "npm:keep", skills: ["keep"] }] }, null, 2)}\n`,
+    `${JSON.stringify({ theme: "keep", skills: ["/keep/skills"], packages: ["git:github.com/TrebuchetDynamics/pi-toolset", { source: "npm:keep", skills: ["keep"] }] }, null, 2)}\n`,
   );
   const wrongUnderstandPlugin = path.join(tmp, "wrong-understand-plugin");
   fs.mkdirSync(wrongUnderstandPlugin);
@@ -112,12 +156,25 @@ try {
   fs.writeFileSync(path.join(bin, "pi"), `#!/bin/sh\ncase "$1" in\n  list) printf '%s\\n' "$PI_LIST_OUTPUT" ;;\n  install) printf '%s\\n' "$*" >> '${log}' ;;\nesac\n`);
   fs.writeFileSync(path.join(bin, "tmux"), "#!/bin/sh\nexit 0\n");
   fs.writeFileSync(path.join(bin, "rtk"), "#!/bin/sh\nprintf 'rtk test\\n'\n");
-  for (const name of ["pi", "tmux", "rtk"]) fs.chmodSync(path.join(bin, name), 0o755);
+  fs.writeFileSync(path.join(bin, "curl"), `#!/bin/sh
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = -o ]; then
+    shift
+    printf '%s\\n' '#!/bin/sh' 'printf "%s\\n" "\$RTK_VERSION" >> "\$RTK_TEST_LOG"' > "$1"
+    exit 0
+  fi
+  shift
+done
+exit 2
+`);
+  for (const name of ["pi", "tmux", "rtk", "curl"]) fs.chmodSync(path.join(bin, name), 0o755);
 
   const output = run([], {
     env: {
       HOME: home,
       PATH: `${bin}:${path.dirname(process.execPath)}:${process.env.PATH}`,
+      RTK_TEST_LOG: path.join(tmp, "rtk-updates"),
+      RTK_VERSION: "v-test",
       UA_DIR: understand,
       TMUX_CONF_TARGET: path.join(tmp, "tmux.conf"),
       TMUX_HELPER_DIR: path.join(tmp, "tmux-helpers"),
@@ -138,10 +195,21 @@ try {
   assert.equal(fs.readlinkSync(path.join(home, ".understand-anything-plugin")), path.join(understand, "understand-anything-plugin"));
   assert.match(output, /installed: Understand-Anything/);
   assert.match(output, /installed: RTK/);
+  assert.equal(fs.readFileSync(path.join(tmp, "rtk-updates"), "utf8"), "v-test\n", "existing RTK must still run the installer with the requested version");
+  const bundledSkills = fs.readdirSync(path.join(root, "skills"), { recursive: true })
+    .filter((file) => path.basename(file) === "SKILL.md")
+    .map((file) => fs.readFileSync(path.join(root, "skills", file), "utf8").match(/^name:\s*(.+)$/m)[1]);
+  for (const name of bundledSkills) {
+    for (const target of ["codex-skills", "claude-skills"]) {
+      assert.ok(fs.existsSync(path.join(tmp, target, name, "SKILL.md")), `${target} missing ${name}`);
+    }
+  }
+  assert.ok(bundledSkills.includes("ponytail"));
   assert.match(output, /Codex skills dir:/);
   assert.match(output, /Claude skills dir:/);
   const settings = JSON.parse(fs.readFileSync(path.join(agentDir, "settings.json"), "utf8"));
   assert.equal(settings.theme, "keep");
+  assert.deepEqual(settings.skills, ["/keep/skills", path.join(tmp, "codex-skills")]);
   assert.deepEqual(settings.packages[0], {
     source: "git:github.com/TrebuchetDynamics/pi-toolset",
     skills: [],
@@ -155,6 +223,20 @@ try {
   assert.match(output, /disabled duplicate package skills/);
   assert.match(output, /skipped: OmniRoute/);
   assert.match(output, /installation complete/);
+  const skillsEnv = {
+    HOME: home,
+    PATH: `${bin}:${path.dirname(process.execPath)}:${process.env.PATH}`,
+    PI_CODING_AGENT_DIR: agentDir,
+    CODEX_SKILLS_DIR: path.join(tmp, "codex-skills"),
+    CLAUDE_SKILLS_DIR: path.join(tmp, "claude-skills"),
+    PI_TOOLSET_SKIP: "pi,package,tmux,understand,rtk,omniroute",
+  };
+  run([], { env: skillsEnv });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(agentDir, "settings.json"), "utf8")), settings);
+  assert.equal(fs.readdirSync(agentDir).filter((name) => name.startsWith("settings.json.bak.")).length, 1);
+  const freshAgent = path.join(tmp, "fresh-agent");
+  run([], { env: { ...skillsEnv, PI_CODING_AGENT_DIR: freshAgent } });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(freshAgent, "settings.json"), "utf8")).skills, [path.join(tmp, "codex-skills")]);
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

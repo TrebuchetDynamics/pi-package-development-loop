@@ -30,14 +30,14 @@ fs.writeFileSync(
 );
 fs.writeFileSync(
   path.join(agentDir, "settings.json"),
-  `${JSON.stringify({ theme: "keep-me" }, null, 2)}\n`,
+  `${JSON.stringify({ theme: "keep-me", retry: { provider: { timeoutMs: 1234 } } }, null, 2)}\n`,
 );
 fs.writeFileSync(path.join(binDir, "pi"), "#!/bin/sh\nexit 0\n", {
   mode: 0o755,
 });
 fs.writeFileSync(
   path.join(binDir, "omniroute"),
-  '#!/bin/sh\nprintf \'%s|%s\\n\' "$OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT" "$*" >> "$OMNIROUTE_LOG"\ncase "$1" in serve) touch "$SERVER_MARKER";; stop) rm -f "$SERVER_MARKER";; esac\n',
+  '#!/bin/sh\nprintf \'%s|%s\\n\' "$OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT" "$*" >> "$OMNIROUTE_LOG"\ncase "$*" in *"api api-keys post-api-keys"*) printf \'%s\\n\' \'{"key":"generated-key"}\';; esac\ncase "$1" in serve) touch "$SERVER_MARKER";; stop) rm -f "$SERVER_MARKER";; esac\n',
   { mode: 0o755 },
 );
 fs.writeFileSync(
@@ -50,6 +50,14 @@ let requireDaemonStart = false;
 let catalogPath = "/v1/models";
 const server = http.createServer(async (request, response) => {
   response.setHeader("content-type", "application/json");
+  if (
+    request.headers.authorization !== "Bearer fixture-key" &&
+    request.headers.authorization !== "Bearer generated-key"
+  ) {
+    response.statusCode = 401;
+    response.end(JSON.stringify({ error: "unauthorized" }));
+    return;
+  }
   if (request.url === catalogPath) {
     if (requireDaemonStart && !fs.existsSync(serverMarker)) {
       response.statusCode = 503;
@@ -79,6 +87,14 @@ const server = http.createServer(async (request, response) => {
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const { port } = server.address();
+const foreignAuthorizations = [];
+const foreignServer = http.createServer((request, response) => {
+  foreignAuthorizations.push(request.headers.authorization);
+  response.statusCode = 401;
+  response.end(JSON.stringify({ error: "unauthorized" }));
+});
+await new Promise((resolve) => foreignServer.listen(0, "127.0.0.1", resolve));
+const { port: foreignPort } = foreignServer.address();
 
 try {
   const env = {
@@ -174,6 +190,12 @@ try {
   assert.equal(settings.theme, "keep-me");
   assert.equal(settings.defaultProvider, "omniroute");
   assert.equal(settings.defaultModel, "auto/best-free");
+  assert.deepEqual(settings.retry, {
+    provider: { timeoutMs: 1234 },
+    enabled: true,
+    maxRetries: 3,
+    baseDelayMs: 5000,
+  });
   assert.equal(
     fs.statSync(path.join(agentDir, "settings.json")).mode & 0o777,
     0o600,
@@ -186,7 +208,12 @@ try {
     fs.statSync(path.join(agentDir, settingsBackups[0])).mode & 0o777,
     0o600,
   );
-  await execFileAsync("sh", args, { cwd: root, env });
+  const envWithoutExplicitKey = { ...env };
+  delete envWithoutExplicitKey.OMNIROUTE_PI_API_KEY;
+  await execFileAsync("sh", args, {
+    cwd: root,
+    env: envWithoutExplicitKey,
+  });
   assert.equal(
     fs
       .readdirSync(agentDir)
@@ -198,6 +225,85 @@ try {
       .readdirSync(agentDir)
       .filter((name) => name.startsWith("settings.json.bak.")).length,
     1,
+  );
+
+  const explicitRetryAgent = path.join(fixture, "explicit-retry-agent");
+  fs.mkdirSync(explicitRetryAgent);
+  fs.writeFileSync(
+    path.join(explicitRetryAgent, "settings.json"),
+    `${JSON.stringify({ retry: { enabled: false, maxRetries: 0, baseDelayMs: 1000 } }, null, 2)}\n`,
+  );
+  await execFileAsync("sh", args, {
+    cwd: root,
+    env: { ...env, PI_CODING_AGENT_DIR: explicitRetryAgent },
+  });
+  assert.deepEqual(
+    JSON.parse(
+      fs.readFileSync(path.join(explicitRetryAgent, "settings.json"), "utf8"),
+    ).retry,
+    { enabled: false, maxRetries: 0, baseDelayMs: 1000 },
+    "an explicit global retry policy must be preserved",
+  );
+
+  const foreignAgent = path.join(fixture, "foreign-agent");
+  fs.mkdirSync(foreignAgent);
+  fs.writeFileSync(
+    path.join(foreignAgent, "models.json"),
+    `${JSON.stringify({ providers: { omniroute: { baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: "fixture-key" } } }, null, 2)}\n`,
+  );
+  await assert.rejects(
+    execFileAsync(
+      "sh",
+      [
+        script,
+        "--config-only",
+        "--base-url",
+        `http://127.0.0.1:${foreignPort}/v1`,
+      ],
+      {
+        cwd: root,
+        env: {
+          ...env,
+          PI_CODING_AGENT_DIR: foreignAgent,
+          OMNIROUTE_PI_API_KEY: "",
+        },
+      },
+    ),
+  );
+  assert.ok(
+    foreignAuthorizations.every((value) => value !== "Bearer fixture-key"),
+    "a saved key must not be sent to a different origin",
+  );
+
+  foreignAuthorizations.length = 0;
+  fs.writeFileSync(
+    path.join(foreignAgent, "models.json"),
+    `${JSON.stringify({ providers: { omniroute: { baseUrl: `http://127.0.0.1:${foreignPort}/v1`, apiKey: "prefix-$SAVED_KEY" } } }, null, 2)}\n`,
+  );
+  await assert.rejects(
+    execFileAsync(
+      "sh",
+      [
+        script,
+        "--config-only",
+        "--base-url",
+        `http://127.0.0.1:${foreignPort}/v1`,
+      ],
+      {
+        cwd: root,
+        env: {
+          ...env,
+          PI_CODING_AGENT_DIR: foreignAgent,
+          OMNIROUTE_PI_API_KEY: "",
+        },
+      },
+    ),
+  );
+  assert.ok(
+    foreignAuthorizations.every(
+      (value) => value !== "Bearer prefix-$SAVED_KEY",
+    ),
+    "embedded Pi secret references must not be sent as literal credentials",
   );
 
   catalogPath = "/models";
@@ -274,12 +380,62 @@ try {
     /^8\|serve --daemon --no-open$/m,
     "the refreshed daemon must start even when runtime settings are unchanged",
   );
+  requireDaemonStart = false;
+  fs.writeFileSync(omnirouteLog, "");
+  await assert.rejects(
+    execFileAsync(
+      "sh",
+      [
+        script,
+        "--base-url",
+        `http://127.0.0.1:${port}/v1`,
+        "--model",
+        "missing-route",
+      ],
+      { cwd: root, env: { ...env, NPM_FAIL: "0" } },
+    ),
+  );
+  assert.doesNotMatch(
+    fs.readFileSync(omnirouteLog, "utf8"),
+    /api api-keys post-api-keys/,
+    "a missing model must not create an unnecessary API key",
+  );
+
+  const generatedKeyAgent = path.join(fixture, "generated-key-agent");
+  const generatedKeyTmp = path.join(fixture, "generated-key-tmp");
+  fs.mkdirSync(generatedKeyTmp);
+  const generatedKeyEnv = {
+    ...env,
+    PI_CODING_AGENT_DIR: generatedKeyAgent,
+    TMPDIR: generatedKeyTmp,
+  };
+  delete generatedKeyEnv.OMNIROUTE_PI_API_KEY;
+  await execFileAsync(
+    "sh",
+    [script, "--base-url", `http://127.0.0.1:${port}/v1`],
+    { cwd: root, env: generatedKeyEnv },
+  );
+  const generatedKeyConfig = JSON.parse(
+    fs.readFileSync(path.join(generatedKeyAgent, "models.json"), "utf8"),
+  );
+  assert.equal(
+    generatedKeyConfig.providers.omniroute.apiKey,
+    "generated-key",
+    "a local install must create a valid OmniRoute client key",
+  );
+  assert.deepEqual(
+    fs.readdirSync(generatedKeyTmp),
+    [],
+    "temporary API-key output must be removed",
+  );
+
   const pkg = JSON.parse(
     fs.readFileSync(path.join(root, "package.json"), "utf8"),
   );
   assert.ok(pkg.files.includes("install-omniroute-pi.sh"));
 } finally {
   server.close();
+  foreignServer.close();
   fs.rmSync(fixture, { recursive: true, force: true });
 }
 

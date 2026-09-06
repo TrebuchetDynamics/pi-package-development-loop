@@ -13,11 +13,21 @@
 
 ## Quick start
 
-Requires Pi. The bundled OmniRoute installer requires a version supported by OmniRoute: Node.js `22.22.2`, `24`, `25`, or `26`. When that Node version is missing or too old on Linux, the universal installer downloads it into `~/.local/share/pi-node/current` (the location Pi's own installer uses) and puts it on `PATH`; other platforms need Node installed manually.
+Package-only installation requires Pi; the all-in-one setup below installs it. The bundled OmniRoute installer requires a version supported by OmniRoute: Node.js `22.22.2`, `24`, `25`, or `26`. When that Node version is missing or too old on Linux, the universal installer downloads it into `~/.local/share/pi-node/current` (the location Pi's own installer uses) and puts it on `PATH`; other platforms need Node installed manually.
 
 ### All-in-one setup
 
-From a checkout, the universal installer sets up Pi, this package, tmux with `tx`, Search Hub, Understand-Anything, RTK, OmniRoute, and global Codex/Claude skill copies:
+On a new Ubuntu PC, install globally without keeping a checkout:
+
+```bash
+sudo apt-get update && sudo apt-get install -y ca-certificates curl
+curl -fsSL https://raw.githubusercontent.com/TrebuchetDynamics/pi-toolset/main/install.sh -o /tmp/pi-toolset-install.sh
+sh /tmp/pi-toolset-install.sh && rm -f /tmp/pi-toolset-install.sh
+```
+
+The downloaded script fetches and unpacks the complete repository before executing it, installs missing Ubuntu prerequisites, and installs Pi resources in the default global user scope.
+
+Alternatively, run the universal installer from a checkout. It sets up Pi, this package, tmux with `tx`, Search Hub, Understand-Anything, RTK, OmniRoute, and global Codex/Claude skill copies:
 
 ```bash
 git clone https://github.com/TrebuchetDynamics/pi-toolset.git
@@ -25,7 +35,7 @@ cd pi-toolset
 sh install.sh
 ```
 
-It supports macOS, common Linux distributions, and Termux. Remote installers are fully downloaded before execution. Existing files are backed up where supported; existing Pi, Understand, RTK, and OmniRoute installations are reused, and the pi-toolset package itself is updated to the latest version on every run. OmniRoute is installed globally, starts a local daemon, and becomes Pi's default provider. Global skill copies back up changed same-name skills before replacement; unchanged tools and assets are reused on subsequent runs. To prevent Pi skill-collision warnings, the all-in-one installer disables this package's skill entries in Pi and uses the identical `~/.agents/skills` copies shared with Codex; package-only installs continue to load skills from the package. When run in a terminal, the installer shows an interactive checklist so you can deselect any component; non-interactive runs install everything. Preview with `sh install.sh --dry-run`, or set `PI_TOOLSET_SKIP=rtk,omniroute` (ids: `pi`, `package`, `tmux`, `understand`, `rtk`, `skills`, `omniroute`) or `PI_TOOLSET_SKIP_OMNIROUTE=1` to omit components. Onklaud remains opt-in.
+It supports Ubuntu, macOS, other common Linux distributions, and Termux. Remote installers are fully downloaded before execution. Existing files are backed up where supported; existing Pi, Understand, and OmniRoute installations are reused. RTK is installed or updated to its latest release on every run (`RTK_VERSION` can pin a release), and the pi-toolset package, including its Ponytail extension, is updated on every run. OmniRoute is installed globally, starts a local daemon, and becomes Pi's default provider. Global skill copies back up changed same-name skills before replacement; unchanged tools and assets are reused on subsequent runs. To prevent Pi skill-collision warnings, the all-in-one installer disables this package's skill entries in Pi and explicitly registers all bundled skills from `~/.agents/skills` (or `CODEX_SKILLS_DIR`) for Pi, shared with Codex; package-only installs continue to load skills from the package. When run in a terminal, the installer shows an interactive checklist so you can deselect any component; non-interactive runs install everything. Preview with `sh install.sh --dry-run`, or set `PI_TOOLSET_SKIP=rtk,omniroute` (ids: `pi`, `package`, `tmux`, `understand`, `rtk`, `skills`, `omniroute`) or `PI_TOOLSET_SKIP_OMNIROUTE=1` to omit components. Onklaud remains opt-in.
 
 To install only the Pi package when Pi already exists:
 
@@ -100,7 +110,7 @@ Skills load on demand. Invoke them naturally or use `/skill:<name>` when skill c
 | Agent skills                |   **65** | Engineering, planning, delivery, UI, research, Pi, and communication workflows                       |
 | Pi extensions               |   **15** | Commands, tools, hooks, status behavior, delegation, and research bridges                            |
 | Theme                       |    **1** | `trebuchet-neon`, a complete dark Pi token map                                                       |
-| Package bins                |    **2** | `tx` and `autofolderrefactor`                                                                |
+| Package bins                |    **2** | `tx` and `autofolderrefactor`                                                                        |
 | Direct runtime dependencies |    **3** | Bundled `@narumitw/pi-goal`, `pi-posher`, and `pi-subagents`; Pi core packages remain optional peers |
 
 ### Core extension surfaces
@@ -236,7 +246,7 @@ The all-in-one installer runs this by default. For individual setup:
 sh install-omniroute-pi.sh
 ```
 
-The installer installs or refreshes OmniRoute globally with strict Node engine checks and npm's legacy peer resolver (avoiding upstream React/Marked peer-warning noise), restarts the local daemon so provider/model rotation fixes take effect, binds it to `127.0.0.1`, enables crash recovery and autostart, and selects the keyless `auto/best-free` pool so 401, 429, and 504 failures can fall through to another free model. It preserves existing Pi providers/settings, writes permission-restricted backups, and sets that route as Pi's default. It also persists capacity for eight structurally heavy Pi chats across restarts; lower `OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT` on memory-constrained hosts. Use `--model ID` to select a different advertised model or route.
+The installer installs or refreshes OmniRoute globally with strict Node engine checks and npm's legacy peer resolver (avoiding upstream React/Marked peer-warning noise), restarts the local daemon so provider/model rotation fixes take effect, binds it to `127.0.0.1`, enables crash recovery and autostart, and selects the keyless `auto/best-free` pool so 401, 429, and 504 failures can fall through to another free model. It preserves existing Pi providers/settings, reuses a working endpoint key or creates one for a local install, writes permission-restricted backups, sets that route as Pi's default, and defaults Pi's retry delay to five seconds so OmniRoute's transient model lockout can clear (an existing retry policy is left unchanged). It also persists capacity for eight structurally heavy Pi chats across restarts; lower `OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT` on memory-constrained hosts. Use `--model ID` to select a different advertised model or route.
 
 For an existing server:
 
@@ -248,7 +258,7 @@ Remote servers must already expose the requested route. The installer probes bot
 
 ### RTK
 
-The all-in-one installer installs [rtk-ai/rtk](https://github.com/rtk-ai/rtk) through its checksum-verifying official installer. Package-only users can install RTK separately, then use `/rtk status`. The extension fails open when RTK is absent or unsupported.
+The all-in-one installer installs or updates [rtk-ai/rtk](https://github.com/rtk-ai/rtk) through its checksum-verifying official installer. Package-only users can install RTK separately, then use `/rtk status`. The extension fails open when RTK is absent or unsupported.
 
 ```text
 /rtk status
@@ -276,7 +286,7 @@ The all-in-one installer runs this by default. For individual setup:
 sh install-agent-skills.sh
 ```
 
-This installs flattened skill directories to `~/.agents/skills` and `~/.claude/skills`, backing up same-name skills under `~/.local/state/pi-toolset/skill-backups/`. The all-in-one installer then disables the package's duplicate Pi skill entries; direct `pi install` users are unaffected. Options: `--codex-only`, `--claude-only`, `--dry-run`, and `--no-backup`.
+This installs flattened skill directories to `~/.agents/skills` and `~/.claude/skills`, backing up same-name skills under `~/.local/state/pi-toolset/skill-backups/`. All bundled skills are copied, including the six Ponytail skills refreshed from upstream 4.9.0. The all-in-one installer registers the Codex skill directory in Pi's settings, including when `CODEX_SKILLS_DIR` or `PI_CODING_AGENT_DIR` is customized or the package component is skipped. It also disables this package's duplicate Pi skill entries; direct `pi install` users are unaffected. Options: `--codex-only`, `--claude-only`, `--dry-run`, and `--no-backup`.
 
 ## Theme and shell helpers
 

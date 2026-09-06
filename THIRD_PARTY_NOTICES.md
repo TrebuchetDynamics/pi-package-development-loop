@@ -50,7 +50,8 @@ Trebuchet Dynamics under the MIT License.
 ## DietrichGebert/ponytail
 
 - Source: https://github.com/DietrichGebert/ponytail
-- Snapshot inspected: `16f2980`
+- Skills snapshot inspected: `974d940a1c5344210874150b98ff0d2c861fab6a` (4.9.0)
+- Pi extension snapshot inspected: `16f2980`
 - Bundled paths:
   - `extensions/ponytail/`
   - `skills/communication/ponytail/`

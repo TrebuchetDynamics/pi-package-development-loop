@@ -10,6 +10,7 @@ export PATH
 PI_TOOLSET_SOURCE=${PI_TOOLSET_SOURCE:-git:github.com/TrebuchetDynamics/pi-toolset}
 PI_INSTALL_URL=${PI_INSTALL_URL:-https://pi.dev/install.sh}
 RTK_INSTALL_URL=${RTK_INSTALL_URL:-https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh}
+PI_TOOLSET_ARCHIVE_URL=${PI_TOOLSET_ARCHIVE_URL:-https://codeload.github.com/TrebuchetDynamics/pi-toolset/tar.gz/refs/heads/main}
 PI_TOOLSET_SKIP_OMNIROUTE=${PI_TOOLSET_SKIP_OMNIROUTE:-0}
 dry_run=0
 
@@ -31,7 +32,8 @@ component; non-interactive runs install everything unless PI_TOOLSET_SKIP is set
 
 Components:
   Pi coding agent, pi-toolset package, tmux and tx, Search Hub research
-  extension, Understand-Anything, RTK, global Codex and Claude skill copies,
+  extension, Understand-Anything, updated RTK, Ponytail, all bundled skills for
+  Pi, Codex and Claude,
   OmniRoute daemon and Pi configuration
 
 Options:
@@ -116,11 +118,11 @@ tui_select() {
       i=$((i + 1))
     done <<EOF
 pi:Pi coding agent
-package:pi-toolset package
+package:pi-toolset package (includes Ponytail)
 tmux:tmux and tx
 understand:Understand-Anything
-rtk:RTK
-skills:Global Codex and Claude skills
+rtk:RTK (install/update latest)
+skills:All bundled skills for Pi, Codex and Claude
 omniroute:OmniRoute
 EOF
   }
@@ -160,17 +162,17 @@ EOF
 
 print_plan() {
   if [ "$want_pi" = 1 ]; then printf '%s\n' 'would install: Pi coding agent'; fi
-  if [ "$want_package" = 1 ]; then printf '%s\n' "would install: pi-toolset ($PI_TOOLSET_SOURCE)"; fi
+  if [ "$want_package" = 1 ]; then printf '%s\n' "would install: pi-toolset including Ponytail ($PI_TOOLSET_SOURCE)"; fi
   if [ "$want_tmux" = 1 ]; then printf '%s\n' 'would install: tmux and tx'; fi
   if [ "$want_understand" = 1 ]; then printf '%s\n' 'would install: Understand-Anything'; fi
   if [ "$want_rtk" = 1 ]; then printf '%s\n' 'would install: RTK'; fi
-  if [ "$want_skills" = 1 ]; then printf '%s\n' 'would install: global Codex and Claude skill copies'; fi
+  if [ "$want_skills" = 1 ]; then printf '%s\n' 'would install: global Codex and Claude skill copies (all bundled skills, including Ponytail, shared with Pi)'; fi
   if [ "$want_omniroute" = 1 ]; then
     printf '%s\n' 'would install: OmniRoute'
   else
     printf '%s\n' 'would skip: OmniRoute'
   fi
-  if [ "$want_skills" = 1 ] && [ "$want_package" = 1 ]; then
+  if [ "$want_skills" = 1 ]; then
     printf '%s\n' 'would configure: Pi to use global skills without duplicate package skills'
   fi
 }
@@ -178,6 +180,36 @@ print_plan() {
 if [ "$dry_run" = 1 ]; then
   print_plan
   exit 0
+fi
+
+# A downloaded copy of this file bootstraps the complete checkout first. This
+# keeps the Ubuntu install command clone-free without piping remote code to sh.
+if [ ! -f "$script_dir/install-agent-skills.sh" ] ||
+   [ ! -f "$script_dir/install-omniroute-pi.sh" ] ||
+   [ ! -f "$script_dir/tmux/install.sh" ]; then
+  command -v curl >/dev/null 2>&1 || {
+    printf 'install: curl is required to download pi-toolset\n' >&2
+    exit 1
+  }
+  command -v tar >/dev/null 2>&1 || {
+    printf 'install: tar is required to unpack pi-toolset\n' >&2
+    exit 1
+  }
+  bootstrap_dir=$(mktemp -d "${TMPDIR:-/tmp}/pi-toolset-bootstrap.XXXXXX")
+  trap 'rm -rf "$bootstrap_dir"' EXIT
+  trap 'exit 1' HUP INT TERM
+  printf 'downloading: pi-toolset\n'
+  if ! curl -fsSL "$PI_TOOLSET_ARCHIVE_URL" -o "$bootstrap_dir/pi-toolset.tar.gz"; then
+    printf 'install: failed to download pi-toolset\n' >&2
+    exit 1
+  fi
+  mkdir "$bootstrap_dir/repo"
+  if ! tar -xzf "$bootstrap_dir/pi-toolset.tar.gz" -C "$bootstrap_dir/repo" --strip-components=1; then
+    printf 'install: failed to unpack pi-toolset\n' >&2
+    exit 1
+  fi
+  sh "$bootstrap_dir/repo/install.sh"
+  exit $?
 fi
 
 if [ -t 0 ]; then
@@ -263,9 +295,24 @@ as_root() {
   elif command -v sudo >/dev/null 2>&1; then
     sudo "$@"
   else
-    printf 'install: sudo is required to install tmux with %s\n' "$1" >&2
+    printf 'install: sudo is required to install system packages\n' >&2
     exit 1
   fi
+}
+
+install_ubuntu_prerequisites() {
+  command -v apt-get >/dev/null 2>&1 || return 0
+  if command -v curl >/dev/null 2>&1 &&
+     command -v git >/dev/null 2>&1 &&
+     command -v tar >/dev/null 2>&1; then
+    return 0
+  fi
+  printf 'installing: Ubuntu prerequisites\n'
+  as_root apt-get update
+  as_root apt-get install -y ca-certificates curl git tar
+  require curl
+  require git
+  require tar
 }
 
 install_tmux_package() {
@@ -291,6 +338,8 @@ install_tmux_package() {
     exit 1
   fi
 }
+
+install_ubuntu_prerequisites
 
 if [ "$want_pi" = 1 ]; then
   if command -v pi >/dev/null 2>&1; then
@@ -365,14 +414,11 @@ if [ "$want_understand" = 1 ]; then
 fi
 
 if [ "$want_rtk" = 1 ]; then
-  if command -v rtk >/dev/null 2>&1; then
-    printf 'present: RTK (%s)\n' "$(rtk --version)"
-  else
-    run_remote_installer "$RTK_INSTALL_URL" RTK
-    hash -r
-    require rtk
-  fi
-  printf 'installed: RTK\n'
+  printf 'installing/updating: RTK (%s)\n' "${RTK_VERSION:-latest}"
+  run_remote_installer "$RTK_INSTALL_URL" RTK
+  hash -r
+  require rtk
+  printf 'installed: RTK (%s)\n' "$(rtk --version)"
 fi
 
 if [ "$want_skills" = 1 ]; then
@@ -380,16 +426,19 @@ if [ "$want_skills" = 1 ]; then
   printf 'installed: global Codex and Claude skill copies\n'
 fi
 
-if [ "$want_skills" = 1 ] && [ "$want_package" = 1 ] && [ "${AGENT_SKILLS_DRY_RUN:-0}" = "0" ]; then
+if [ "$want_skills" = 1 ] && [ "${AGENT_SKILLS_DRY_RUN:-${CLAUDE_SKILLS_DRY_RUN:-0}}" = "0" ]; then
   ensure_node
   pi_settings="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json"
-  PI_SETTINGS_FILE="$pi_settings" PI_TOOLSET_SOURCE="$PI_TOOLSET_SOURCE" node <<'NODE'
+  PI_SETTINGS_FILE="$pi_settings" PI_TOOLSET_SOURCE="$PI_TOOLSET_SOURCE" PI_TOOLSET_REQUIRE_PACKAGE="$want_package" CODEX_SKILLS_DIR="${CODEX_SKILLS_DIR:-$HOME/.agents/skills}" node <<'NODE'
 import fs from "node:fs";
+import path from "node:path";
 
 const file = process.env.PI_SETTINGS_FILE;
 const source = process.env.PI_TOOLSET_SOURCE;
-const before = fs.readFileSync(file, "utf8");
-const settings = JSON.parse(before);
+const before = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
+const settings = before === null ? {} : JSON.parse(before);
+const skillRoot = path.resolve(process.env.CODEX_SKILLS_DIR);
+settings.skills = [...new Set([...(settings.skills ?? []), skillRoot])];
 let found = false;
 settings.packages = (settings.packages ?? []).map((entry) => {
   const entrySource = typeof entry === "string" ? entry : entry?.source;
@@ -397,19 +446,22 @@ settings.packages = (settings.packages ?? []).map((entry) => {
   found = true;
   return typeof entry === "string" ? { source: entry, skills: [] } : { ...entry, skills: [] };
 });
-if (!found) throw new Error(`Pi package setting not found: ${source}`);
+if (!found && process.env.PI_TOOLSET_REQUIRE_PACKAGE === "1") throw new Error(`Pi package setting not found: ${source}`);
 const after = `${JSON.stringify(settings, null, 2)}\n`;
 if (after !== before) {
-  const backup = `${file}.bak.${Date.now()}`;
-  fs.copyFileSync(file, backup);
-  fs.chmodSync(backup, 0o600);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  if (before !== null) {
+    const backup = `${file}.bak.${Date.now()}`;
+    fs.copyFileSync(file, backup);
+    fs.chmodSync(backup, 0o600);
+  }
   const temporary = `${file}.tmp.${process.pid}`;
   fs.writeFileSync(temporary, after, { mode: 0o600 });
   fs.renameSync(temporary, file);
 }
 fs.chmodSync(file, 0o600);
 NODE
-  printf 'configured: disabled duplicate package skills; using global Codex skill copies\n'
+  printf 'configured: disabled duplicate package skills; Pi uses all bundled skills from the Codex skill directory\n'
 fi
 
 if [ "$want_omniroute" = 1 ]; then
