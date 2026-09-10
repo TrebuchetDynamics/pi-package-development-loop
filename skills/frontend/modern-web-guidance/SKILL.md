@@ -19,6 +19,8 @@ Must use this skill:
 
 ### Step 1. Search Use Cases
 
+First resolve this skill's directory and search the bundled `guides/` for the relevant use case. Read only matching guides; this works offline and avoids installing a CLI for a question the bundle already answers. Use the remote search below when local coverage is missing or a documentation refresh is necessary and network/package execution is allowed. Treat the snapshot as guidance to check against the project's browser policy, not proof of current support.
+
 Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web-guidance` directly with `npx`.
 
 ```sh

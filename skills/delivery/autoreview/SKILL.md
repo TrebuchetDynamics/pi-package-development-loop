@@ -18,7 +18,7 @@ Based on the OpenClaw `autoreview` skill; this package bundles the workflow, not
    - `skills/delivery/autoreview/scripts/autoreview`
    - `~/.codex/skills/agent-scripts/autoreview/scripts/autoreview`
    - any project-documented `autoreview` helper path
-2. If no helper exists, report blocked with the missing helper. Do not invent a reviewer command.
+2. If no helper exists, use an available, authorized clean-context review delegate for the same target. If neither is available, report the missing review capability; do not invent a command or label self-review as independent review.
 3. Use Codex review by default unless the user explicitly requested another engine.
 4. Do not push just to review. Push only when the user requested push, ship, or PR update.
 
@@ -37,7 +37,7 @@ Based on the OpenClaw `autoreview` skill; this package bundles the workflow, not
 - Reject speculative edge cases, broad rewrites, and fixes that over-complicate the codebase.
 - Prefer small fixes at the right ownership boundary.
 - If a review-triggered fix changes code, rerun focused tests and rerun autoreview.
-- Stop when the helper exits 0 with no accepted/actionable findings.
+- Stop when the selected reviewer completes with no accepted/actionable findings. If the same blocker or unchanged finding repeats without new evidence, report it instead of starting another identical review.
 - Do not run nested reviewers, built-in `codex review`, or reviewer panels from inside the review.
 - Multi-reviewer panels are opt-in only: use them when explicitly requested or risk justifies the spend.
 

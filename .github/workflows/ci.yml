@@ -23,6 +23,7 @@ jobs:
         run: git diff --check
       - name: Check package contents
         run: |
+          set -o pipefail
           npm pack --dry-run 2>&1 | tee /tmp/pi-toolset-pack.txt
           ! grep -E '(^|/)\.pi/|\.understand-anything|codebase-map-understand\.md' /tmp/pi-toolset-pack.txt
       - name: Audit bundled Stitch tooling

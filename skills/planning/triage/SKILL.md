@@ -33,7 +33,7 @@ Five **state** roles:
 - `ready-for-human` — needs human implementation
 - `wontfix` — will not be actioned
 
-Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
+Every triaged issue should carry exactly one category role and one state role. If state roles conflict, inspect the issue history and propose the intended state; ask only if that evidence and the maintainer's request leave the choice unresolved. Continue independent read-only investigation.
 
 These are canonical role names — the actual label strings used in the issue tracker may differ. The mapping should come from repo docs or project instructions. If it is missing, inspect `AGENTS.md`, `CONTEXT.md`, docs/ADR files, and issue tracker metadata; ask one focused setup question only if labels remain ambiguous.
 
@@ -60,15 +60,15 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
 ## Triage a specific issue
 
-1. **Gather context.** Read the full issue (body, comments, labels, reporter, dates). Parse any prior triage notes so you don't re-ask resolved questions. Inspect `git status --short --branch`, repo instructions, `CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`, relevant tests/manifests, `codebase-map-understand.md`, and `codebase-map-understand.md` when present. Query codebase map for module/caller leads when impact is unclear, then verify against live files. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Read `.out-of-scope/*.md` and surface any prior rejection that resembles this issue.
+1. **Gather context.** Read the full issue (body, comments, labels, reporter, dates). Parse any prior triage notes so you don't re-ask resolved questions. Inspect `git status --short --branch`, repo instructions, `CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`, relevant tests/manifests, `codebase-map-understand.md` when present. Query codebase map for module/caller leads when impact is unclear, then verify against live files. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Read `.out-of-scope/*.md` and surface any prior rejection that resembles this issue.
 
-2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the issue. Wait for direction.
+2. **Classify provisionally.** Identify likely category/state and what evidence is still needed. A request to inspect or recommend does not authorize posting, relabeling, or closing.
 
 3. **Reproduce (bugs only).** Before any grilling, attempt reproduction: read the reporter's steps, trace the relevant code, run tests or commands. Report what happened — successful repro with code path, failed repro, or insufficient detail (a strong `needs-info` signal). A confirmed repro makes a much stronger agent brief.
 
 4. **Grill (if needed).** If the issue needs fleshing out, run a `/grill-with-docs` session.
 
-5. **Apply the outcome:**
+5. **Report or apply the outcome.** Ground the recommendation in reproduction and the gathered evidence. Apply only the tracker changes the maintainer requested or authorized; otherwise return the proposed outcome:
    - `ready-for-agent` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
    - `ready-for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `needs-info` — post triage notes (template below).
@@ -78,7 +78,7 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
 ## Quick state override
 
-If the maintainer says "move #42 to ready-for-agent", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `ready-for-agent` without a grilling session, ask whether they want to write an agent brief.
+If the maintainer says "move #42 to ready-for-agent", apply that role change directly and verify the resulting labels. Skip grilling; a state-only request does not authorize an extra comment or closing the issue. Mention a missing agent brief only when it materially prevents handoff.
 
 ## Needs-info template
 

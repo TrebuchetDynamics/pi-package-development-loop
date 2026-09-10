@@ -4,6 +4,10 @@ This package bundles selected skills and guidance from upstream open-source repo
 The local package-specific skills, helper libraries, and docs are Copyright (c) 2026
 Trebuchet Dynamics under the MIT License.
 
+## Package-wide skill adaptations
+
+Local skill maintenance adds scope-aware shared guidance, persistent session authorization, available-tool fallbacks, and concrete validation boundaries. Selected planning, delivery, engineering, and design workflows were corrected to preserve explicit user intent. Long design entrypoints were split into linked conditional references; their upstream guidance remains attributed to the sources below. These are package-local adaptations, not newer upstream snapshots. Existing licenses and source revisions are preserved. Instruction and packaging checks do not establish a measured skill-on/skill-off behavioral improvement.
+
 ## GoogleChrome/modern-web-guidance
 
 - Source: https://github.com/GoogleChrome/modern-web-guidance

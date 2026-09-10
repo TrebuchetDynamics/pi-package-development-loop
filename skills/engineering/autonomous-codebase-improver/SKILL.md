@@ -12,6 +12,7 @@ Research basis: `research/agentic-coding-skills/report.md` found the strongest p
 ## Operating modes
 
 - **Single-slice mode:** use when the user asks for one improvement or a checkpoint. Select, implement, validate, and report one bounded slice.
+- **Bounded collection:** when the user names an entire collection (for example, "improve all skills"), inventory that collection and cover every member through successive validated slices. Shared fixes may cover many members; do not manufacture individual edits. Stop when collection coverage and validation are complete, rather than after the first slice or after expanding into unrelated repository work.
 - **Continuous campaign mode:** use when the user says keep improving, work continuously, follow the roadmap/tasks, find everything worth fixing, or gives a broad ongoing objective. Maintain a ranked queue and keep completing validated slices until a terminal condition applies.
 
 Continuous means repeated bounded work, not one giant diff. Do not ask for approval between safe slices: `/goal pause` pauses a campaign and `/goal resume` continues it.

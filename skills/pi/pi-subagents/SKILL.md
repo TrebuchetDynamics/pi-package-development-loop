@@ -16,7 +16,7 @@ Use this skill when the parent orchestrator needs to launch a specialized subage
 
 ## How to use this router
 
-Read the matching reference file before acting. Paths are relative to this `SKILL.md`; resolve them against `skills/pi-subagents/` and load them with the read tool.
+Read the matching reference file before acting. Resolve paths against the directory containing this `SKILL.md` (including when installed under a flattened skill directory), then load them with the available read tool.
 
 | Task | Read |
 | --- | --- |

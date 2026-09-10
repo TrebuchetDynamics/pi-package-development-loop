@@ -6,11 +6,13 @@ description: >
   for a diff. One-shot report only; does not apply fixes.
 ---
 
-Shared package contract: follow `skills/shared/COMMON-CONTRACT.md` unless this skill's stricter output rules override it.
+Follow [the shared package contract](../../shared/COMMON-CONTRACT.md); use this skill's output format within the user's requested scope.
 
 
 ponytail-review, repo-wide. Scan the whole tree instead of a diff. Rank
 findings biggest cut first.
+
+Verify each candidate against callers, configuration, public contracts, and applicable tests before calling it removable. One implementation or a small wrapper is a lead, not proof of bloat. Label line/dependency savings as estimates and avoid double-counting overlapping candidates.
 
 ## Tags
 

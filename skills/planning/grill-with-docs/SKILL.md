@@ -37,7 +37,7 @@ Interview the owner by resolving dependencies between decisions one-by-one. For 
 3. Check documented decisions: ADRs, README promises, package/resource boundaries, and existing constraints.
 4. Check code reality: tests/manifests/source behavior that confirms or contradicts the plan.
 5. Run a docs-council pass when the branch crosses language, architecture, and delivery risk, or when the user asks for council/advisor input.
-6. Ask exactly one owner-decision question, then wait.
+6. If an owner decision remains unresolved, ask one focused question and wait for its answer. Otherwise state the evidence-backed conclusion and continue; do not invent a question to satisfy the loop.
 7. After the answer, restate the resolved decision, apply accepted doc updates, and move to the next dependent branch.
 
 Waiting is scoped to the active grilling branch. If the user pivots to implementation or live discovery, stop grilling, preserve the unresolved branch and accepted constraints in the handoff, and start the requested workflow without repeating the question. The unresolved decision blocks only work that depends on it.

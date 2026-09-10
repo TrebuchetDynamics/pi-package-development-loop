@@ -15,10 +15,10 @@ You are a frontend engineer focused on transforming designs into clean React cod
 
 ## Retrieval and networking
 0. **Resolve bundled resources first**: Set `SKILL_DIR` to this skill directory (`skills/frontend/stitch-react-components` in this package checkout, or the absolute installed skill resource path exposed by Pi). Run bundled scripts with absolute paths such as `bash "$SKILL_DIR/scripts/fetch-stitch.sh" ...`; run validator commands with `npm --prefix "$SKILL_DIR" run validate -- <file_path>` so the user's project cwd stays unchanged.
-1. **Namespace discovery**: Run `list_tools` to find the Stitch MCP prefix. Use this prefix (e.g., `stitch:`) for all subsequent calls.
+1. **Namespace discovery**: Use the host's available tool catalog/search to find Stitch capabilities. Do not assume a `list_tools` command exists. If Stitch is unavailable but the user supplied exported HTML and images, continue from those local artifacts.
 2. **Metadata fetch**: Call `[prefix]:get_screen` to retrieve the design JSON.
 3. **Check for existing designs**: Before downloading, check if `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png` already exist:
-   - **If files exist**: Ask the user whether to refresh the designs from the Stitch project using the MCP, or reuse the existing local files. Only re-download if the user confirms.
+   - **If files exist**: Reuse them when they match the requested screen. Refresh when the user requested an update; ask only if conflicting local and remote versions leave the intended source unclear.
    - **If files do not exist**: Proceed to step 4.
 4. **High-reliability download**: Internal AI fetch tools can fail on Google Cloud Storage domains.
    - **HTML**: `bash "$SKILL_DIR/scripts/fetch-stitch.sh" "[htmlCode.downloadUrl]" ".stitch/designs/{page}.html"`
@@ -28,9 +28,9 @@ You are a frontend engineer focused on transforming designs into clean React cod
 
 ## Architectural rules
 * **Modular components**: Break the design into independent files. Avoid large, single-file outputs.
-* **Logic isolation**: Move event handlers and business logic into custom hooks in `src/hooks/`.
-* **Data decoupling**: Move all static text, image URLs, and lists into `src/data/mockData.ts`.
-* **Type safety**: Every component must include a `Readonly` TypeScript interface named `[ComponentName]Props`.
+* **Logic isolation**: Keep local handlers with their component; extract hooks when stateful behavior is reused or obscures the rendering logic.
+* **Data decoupling**: Use the project's existing content/data layer. `src/data/mockData.ts` is suitable for a standalone mockup, not a replacement for real product data.
+* **Type safety**: Follow project prop conventions. The optional bundled validator expects a `Readonly` TypeScript interface named `[ComponentName]Props`; use that template for standalone generated components, not as a reason to rewrite unrelated code.
 * **Project specific**: Focus on the target project's needs and constraints. If `codebase-map-understand.md` exists, consult the codebase map for existing component/data-flow relationships before wiring the Stitch output, then verify named files. Leave Google license headers out of the generated React components.
 * **Style mapping**:
     * Extract the `tailwind.config` from the HTML `<head>`.
@@ -38,8 +38,8 @@ You are a frontend engineer focused on transforming designs into clean React cod
     * Use theme-mapped Tailwind classes instead of arbitrary hex codes.
 
 ## Execution steps
-1. **Environment setup**: If `$SKILL_DIR/node_modules` is missing, run `npm --prefix "$SKILL_DIR" install` to enable the validation tools without adding dependencies to the target project.
-2. **Data layer**: Create `src/data/mockData.ts` based on the design content.
+1. **Environment setup**: Check the project's existing validation commands first. If the optional bundled validator is needed and its dependencies are missing, install them only within authorized setup scope; otherwise use project checks and report that the extra validator was not run.
+2. **Data layer**: Connect existing data or create explicitly labeled mock content for a standalone prototype.
 3. **Component drafting**: Use `resources/component-template.tsx` as a base. Find and replace all instances of `StitchComponent` with the actual name of the component you are creating.
 4. **Application wiring**: Update the project entry point (like `App.tsx`) to render the new components.
 5. **Quality check**:

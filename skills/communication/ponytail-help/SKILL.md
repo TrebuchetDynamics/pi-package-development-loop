@@ -5,7 +5,7 @@ description: >
   available commands, or /ponytail-help. One-shot display, not a persistent mode.
 ---
 
-Shared package contract: follow `skills/shared/COMMON-CONTRACT.md` unless this skill's stricter output rules override it.
+Follow [the shared package contract](../../shared/COMMON-CONTRACT.md); use this skill's output format within the user's requested scope.
 
 
 # Ponytail Help

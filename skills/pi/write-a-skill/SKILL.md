@@ -1,11 +1,13 @@
 ---
 name: write-a-skill
-description: Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, or build a new skill.
+description: Create or improve agent skills with precise triggers, progressive disclosure, and usable resources. Use when writing, updating, auditing, or consolidating skill instructions.
 ---
 # Writing Skills
 
 Create skills as small runtime contracts: when to load, what to inspect, what to do, what not to do, and what proves success.
 ## Repo study before drafting
+
+For a collection-wide request, inventory every in-scope skill, inspect the shared contract, and record which findings affect all skills versus individual workflows. Review the entire named collection; change only instructions with a concrete clarity, correctness, scope, or context-cost benefit. Keep coverage and receipts in the conversation unless the user requests a saved report.
 
 Before changing a skill, inspect the current skill inventory, `README.md`, `CONTEXT.md`, `THIRD_PARTY_NOTICES.md`, package manifests, validation tests, and any upstream source being adapted. When `codebase-map-understand.md` exists, consult the codebase map for package/skill relationships that can focus the repo study, then verify named files directly. Preserve third-party notices and make the skill fit this repo's package language instead of copying upstream commands that do not exist here.
 
@@ -14,7 +16,7 @@ Before changing a skill, inspect the current skill inventory, `README.md`, `CONT
 - **Predictability over verbosity.** Define the process, not the output; use one leading term for a repeated idea instead of restating it.
 - **Trigger precision beats breadth.** Add concrete triggers and anti-triggers so the skill does not shadow neighbors; choose model invocation only when autonomous discovery is worth its permanent context load.
 - **Completion criteria prevent premature completion.** Every workflow step ends with an observable, preferably exhaustive, condition that proves the step is done.
-- **Four anchors for non-trivial skills:** operational basis, output contract, boundary disclosure, and one tiny example or expected outcome.
+- **Four anchors for non-trivial skills:** operational basis, output contract, boundary disclosure, and one tiny example or expected outcome. Use these as review questions, not mandatory headings or repeated boilerplate; a short skill can inherit the shared contract.
 - **Progressive disclosure by default.** Keep `SKILL.md` short; move branch-specific rules, long examples, and source notes to `references/` behind a clear context pointer.
 - **Prune no-ops and negation.** Delete lines that would not change default behavior; state the desired positive behavior instead of naming the failure mode unless it is a hard guardrail.
 - **Executable beats inspirational.** Prefer ordered steps, exact commands, schemas, and stop conditions over advice prose.
@@ -35,7 +37,7 @@ Before changing a skill, inspect the current skill inventory, `README.md`, `CONT
    - Reference files for details that do not need to be always read.
    - Scripts only for deterministic validation, extraction, formatting, or repeated transforms.
 4. Review and validate:
-   - Does it trigger at the right time and avoid nearby skills?
+- Does it trigger at the right time and avoid nearby skills?
    - Does each workflow step end with a checkable completion criterion?
    - Can an agent follow it without inventing missing inputs or commands?
    - Run package validation (`npm test` when shipping) and one realistic scenario/review.
@@ -74,10 +76,8 @@ description: Brief capability. Use when [specific triggers]. Do not use for [nea
 
 ## Quick start
 [Minimal first action]
-
 ## Operational basis
 [Files/tools/state the agent must inspect before acting]
-
 ## Workflow
 [Steps/checklists for the main path]
 

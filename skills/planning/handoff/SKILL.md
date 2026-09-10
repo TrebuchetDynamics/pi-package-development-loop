@@ -6,7 +6,11 @@ argument-hint: "What will the next session be used for?"
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
 
+Use a user-specified destination when provided; otherwise choose a unique temporary filename and return its absolute path. Preserve the active objective, latest steering, accepted decisions, remaining tasks, and the next executable step. Include modified paths and their ownership, validation commands with results, exact blockers, and authorization already granted or still needed. Distinguish observed results from assumptions so the next agent does not repeat completed work or mistake a proposed action for approval.
+
 Include a "suggested skills" section in the document, which suggests skills that the agent should invoke. If `codebase-map-understand.md` exists and the continuation needs codebase understanding, include the exact codebase map query to run and any map leads already verified.
+
+Verify the saved file exists and that referenced artifacts resolve. Temporary handoffs are not durable storage; name this limitation if the next session may run on another machine.
 
 Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
 

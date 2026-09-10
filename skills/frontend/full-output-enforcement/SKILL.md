@@ -7,11 +7,11 @@ description: Use when a model must produce complete unabridged code or assets an
 
 ## Baseline
 
-Treat every task as production-critical. A partial output is a broken output. Do not optimize for brevity — optimize for completeness. If the user asks for a full file, deliver the full file. If the user asks for 5 components, deliver 5 components. No exceptions.
+Complete the requested deliverables. If the user asks for a full file, deliver the full file. If the user asks for 5 components, deliver 5 components. A concise completion message is appropriate when the complete artifacts are already saved in the workspace; do not paste every file unless requested.
 
 ## Banned Output Patterns
 
-The following patterns are hard failures. Never produce them:
+The following patterns are failures when they substitute for requested implementation. Literal syntax, quoted source examples, and intentional TODOs outside the requested scope are not omissions:
 
 **In code blocks:** `// ...`, `// rest of code`, `// implement here`, `// TODO`, `/* ... */`, `// similar to above`, `// continue pattern`, `// add more as needed`, bare `...` standing in for omitted code
 
@@ -29,6 +29,8 @@ The following patterns are hard failures. Never produce them:
 
 When a response approaches the token limit:
 
+- Prefer completing workspace artifacts and linking them when the user accepts file delivery. Continue tool work across context handoffs when supported; do not impose a manual "continue" gate while execution can proceed.
+
 - Do not compress remaining sections to squeeze them in.
 - Do not skip ahead to a conclusion.
 - Write at full quality up to a clean breakpoint (end of a function, end of a file, end of a section).
@@ -43,7 +45,7 @@ On "continue", pick up exactly where you stopped. No recap, no repetition.
 ## Quick Check
 
 Before finalizing any response, verify:
-- No banned patterns from the list above appear anywhere in the output
+- No requested implementation is replaced by an omission pattern
 - Every item the user requested is present and finished
 - Code blocks contain actual runnable code, not descriptions of what code would do
 - Nothing was shortened to save space

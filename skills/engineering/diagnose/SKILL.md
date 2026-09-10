@@ -89,7 +89,7 @@ Once the loop is red, shrink the repro to the smallest scenario that still fails
 
 ## Phase 3 — Hypothesise
 
-Generate **3–5 ranked hypotheses** before testing any of them. Single-hypothesis generation anchors on the first plausible idea.
+For an uncertain failure, generate a short ranked list of competing hypotheses before testing. If the minimized repro already isolates a direct cause, state that evidence and proceed to the regression test; do not invent alternatives to fill a quota.
 
 Each hypothesis must be **falsifiable**: state the prediction it makes.
 
@@ -97,7 +97,7 @@ Each hypothesis must be **falsifiable**: state the prediction it makes.
 
 If you cannot state the prediction, the hypothesis is a vibe — discard or sharpen it.
 
-**Show the ranked list to the user before testing.** They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. Don't block on it — proceed with your ranking if the user is AFK.
+Briefly report the leading hypothesis and what the next probe will distinguish. Ask only when user-held information is necessary to choose the probe; otherwise keep investigating.
 
 ## Phase 4 — Instrument
 

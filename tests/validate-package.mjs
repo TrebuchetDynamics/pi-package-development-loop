@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -391,6 +392,17 @@ function collectSkillDescriptionBudgetIssues(baseDir, budget = skillDescriptionB
   return issues;
 }
 
+function collectSkillEntrypointBudgetIssues(baseDir, maxWords = 3500) {
+  const issues = [];
+  for (const file of listSkillFiles(baseDir)) {
+    const content = fs.readFileSync(path.join(baseDir, file), "utf8");
+    const body = content.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
+    const words = body ? body.split(/\s+/).length : 0;
+    if (words > maxWords) issues.push(`${file}: entrypoint ${words} words exceeds ${maxWords}; move conditional detail into linked references`);
+  }
+  return issues;
+}
+
 function collectSkillFrontmatterYamlIssues(baseDir) {
   const issues = [];
   for (const file of listSkillFiles(baseDir)) {
@@ -653,6 +665,7 @@ async function testPiCoreDependencies() {
 async function testSkills() {
   assert.deepEqual(collectSkillInventoryIssues(root, expectedSkills), []);
   assert.deepEqual(collectSkillDescriptionBudgetIssues(root), []);
+  assert.deepEqual(collectSkillEntrypointBudgetIssues(root), []);
   assert.deepEqual(collectSkillFrontmatterYamlIssues(root), []);
   assert.deepEqual([...skillTriggerTokens("Audit polish. polish, routes")].sort(), ["audit", "polish", "routes"], "skill trigger tokenization must ignore punctuation");
   assert.deepEqual(collectSkillQualityGateIssues(root), []);
@@ -1112,7 +1125,56 @@ async function testDocsAndNotices() {
   assert.match(readme, /npm --prefix skills\/frontend\/stitch-react-components audit/);
 }
 
+function testSkillEntrypointBudget() {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "pi-skill-budget-"));
+  try {
+    const skillDir = path.join(fixture, "skills", "example");
+    fs.mkdirSync(path.join(skillDir, "references"), { recursive: true });
+    const header = "---\nname: example\ndescription: Use for a focused example.\n---\n";
+    const skillPath = path.join(skillDir, "SKILL.md");
+    fs.writeFileSync(skillPath, header + "word ".repeat(3501));
+    assert.equal(collectSkillEntrypointBudgetIssues(fixture).length, 1, "oversized entrypoints must be detected");
+    fs.writeFileSync(skillPath, header + "Read [details](references/details.md) when needed.\n");
+    fs.writeFileSync(path.join(skillDir, "references", "details.md"), "detail ".repeat(3501));
+    assert.deepEqual(collectSkillEntrypointBudgetIssues(fixture), [], "conditional references do not count as eagerly loaded entrypoints");
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+}
+
+function testPackageContentsStep() {
+  const ci = read(".github/workflows/ci.yml");
+  const step = ci.match(/- name: Check package contents\n\s+run: \|\n((?:          .*\n)+)/);
+  assert.ok(step, "CI must expose the package contents check");
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "pi-package-step-"));
+  try {
+    const script = step[1].replace(/^          /gm, "")
+      .replaceAll("/tmp/pi-toolset-pack.txt", '"$PACK_LOG"');
+    for (const [exitCode, output, shouldPass] of [
+      [0, "npm notice extensions/goal/index.js", true],
+      [42, "npm error simulated packing failure", false],
+      [0, "npm notice skills/example/.pi/session.json", false],
+      [0, "npm notice .understand-anything/knowledge-graph.json", false],
+      [0, "npm notice codebase-map-understand.md", false],
+    ]) {
+      // Match the unspecified Linux runner shell; npm is stubbed to keep this offline.
+      const result = spawnSync("bash", ["-e", "-c",
+        'npm() { printf "%s\\n" "$PACK_OUTPUT"; return "$PACK_EXIT"; }\n' + script,
+      ], {
+        encoding: "utf8",
+        env: { ...process.env, PACK_LOG: path.join(fixture, "pack.txt"), PACK_OUTPUT: output, PACK_EXIT: String(exitCode) },
+      });
+      assert.ifError(result.error);
+      assert.equal(result.status === 0, shouldPass, `package check: exit=${exitCode}, output=${output}\n${result.stderr}`);
+    }
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+}
+
 await testPackageManifest();
+testPackageContentsStep();
+testSkillEntrypointBudget();
 await testPackageManifestPaths();
 await testUnderstandExtension();
 await testPiCoreDependencies();

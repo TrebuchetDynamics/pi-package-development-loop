@@ -8,7 +8,7 @@ argument-hint: "[lite|full|ultra]"
 license: MIT
 ---
 
-Shared package contract: follow `skills/shared/COMMON-CONTRACT.md` unless this skill's stricter output rules override it.
+Follow [the shared package contract](../../shared/COMMON-CONTRACT.md); use this skill's output format within the user's requested scope.
 
 
 # Ponytail
@@ -53,7 +53,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
 - Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
-- Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
+- Complex request? Deliver the complete requested behavior with the simplest sufficient implementation. State meaningful tradeoffs; do not substitute a partial version or defer requested deliverables behind a follow-up question.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
 

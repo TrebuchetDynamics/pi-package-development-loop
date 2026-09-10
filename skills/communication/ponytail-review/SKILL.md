@@ -6,11 +6,13 @@ description: >
   use ponytail-audit for the whole repository. Does not review correctness.
 ---
 
-Shared package contract: follow `skills/shared/COMMON-CONTRACT.md` unless this skill's stricter output rules override it.
+Follow [the shared package contract](../../shared/COMMON-CONTRACT.md); use this skill's output format within the user's requested scope.
 
 
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
+
+Confirm that each proposed replacement preserves the required behavior and public contracts. Single-use code can still encode a necessary boundary. Estimate savings from the actual proposed cut, and do not present a complexity-only review as evidence that the change is correct or ready to ship.
 
 ## Format
 
@@ -30,7 +32,7 @@ Tags:
 ❌ "This EmailValidator class might be more complex than necessary, have you
 considered whether all these validation rules are needed at this stage?"
 
-✅ `L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
+✅ `L12-38: shrink: duplicate required-field checks. Reuse the existing validator with the same error behavior.`
 
 ✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 
@@ -44,7 +46,7 @@ considered whether all these validation rules are needed at this stage?"
 
 End with the only metric that matters: `net: -<N> lines possible.`
 
-If there is nothing to cut, say `Lean already. Ship.` and stop.
+If there is nothing to cut, say `No supported simplification found.` and stop.
 
 ## Boundaries
 

@@ -60,27 +60,26 @@ When exploring the codebase, use the project's domain glossary so that test name
 
 Before writing any code:
 
-- [ ] Confirm with user what interface changes are needed
-- [ ] Confirm with user which behaviors to test (prioritize)
+- [ ] Derive interface changes and behavior priorities from the request, callers, and existing tests
 - [ ] Identify opportunities for [deep modules](deep-modules.md) (small interface, deep implementation)
 - [ ] Design interfaces for [testability](interface-design.md)
 - [ ] List the behaviors to test (not implementation steps)
-- [ ] Get user approval on the plan
+- [ ] Resolve only behavior or compatibility choices that the available evidence cannot answer
 
-Ask: "What should the public interface look like? Which behaviors are most important to test?"
-
-**You can't test everything.** Confirm with the user exactly which behaviors matter most. Focus testing effort on critical paths and complex logic, not every possible edge case.
+For an already specified feature or defect, proceed directly to RED. Ask about the public interface or priorities only when conflicting requirements would change the implementation. Focus testing effort on critical paths and complex logic, not every possible edge case.
 
 ### 2. Tracer Bullet
 
 Write ONE test that confirms ONE thing about the system:
 
 ```
-RED:   Write test for first behavior → test fails
+RED:   Write test for first behavior → test fails on the intended assertion
 GREEN: Write minimal code to pass → test passes
 ```
 
 This is your tracer bullet - proves the path works end-to-end.
+
+A syntax error, unavailable dependency, or broken fixture is not RED evidence for the target behavior. Repair the test setup until execution reaches the intended assertion before changing production code.
 
 ### 3. Incremental Loop
 

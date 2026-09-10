@@ -5,7 +5,7 @@ description: >
   debt, deferred shortcuts, or /ponytail-debt. One-shot report; changes nothing.
 ---
 
-Shared package contract: follow `skills/shared/COMMON-CONTRACT.md` unless this skill's stricter output rules override it.
+Follow [the shared package contract](../../shared/COMMON-CONTRACT.md); use this skill's output format within the user's requested scope.
 
 
 Every deliberate ponytail shortcut is marked with a `ponytail:` comment naming

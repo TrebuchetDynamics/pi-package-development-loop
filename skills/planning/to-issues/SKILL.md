@@ -17,13 +17,13 @@ Work from whatever is already in the conversation context. If the user passes an
 
 ### 2. Explore the codebase (optional)
 
-If you have not already explored the codebase, inspect `git status --short --branch`, repo instructions, `README.md`, `CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`, relevant manifests/tests, `codebase-map-understand.md`, and `codebase-map-understand.md` when present. For broad plans, consult the codebase map for module/caller/data-flow leads and verify named files before slicing. Issue titles and descriptions should use the project's domain glossary vocabulary and respect ADRs in the area you're touching.
+If you have not already explored the codebase, inspect `git status --short --branch`, repo instructions, `README.md`, `CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`, relevant manifests/tests, `codebase-map-understand.md` when present. For broad plans, consult the codebase map for module/caller/data-flow leads and verify named files before slicing. Issue titles and descriptions should use the project's domain glossary vocabulary and respect ADRs in the area you're touching.
 
 ### 3. Draft vertical slices
 
 Break the plan into **tracer bullet** issues. Each issue is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
 
-Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
+Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an unresolved architectural decision. AFK slices have enough information for autonomous implementation; the label does not authorize merging, deployment, or other external actions. Prefer AFK when the evidence supports it.
 
 <vertical-slice-rules>
 - Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
@@ -31,7 +31,7 @@ Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an
 - Prefer many thin slices over few thick ones
 </vertical-slice-rules>
 
-### 4. Quiz the user
+### 4. Check the breakdown
 
 Present the proposed breakdown as a numbered list. For each slice, show:
 
@@ -40,20 +40,15 @@ Present the proposed breakdown as a numbered list. For each slice, show:
 - **Blocked by**: which other slices (if any) must complete first
 - **User stories covered**: which user stories this addresses (if the source material has them)
 
-Ask the user:
-
-- Does the granularity feel right? (too coarse / too fine)
-- Are the dependency relationships correct?
-- Should any slices be merged or split further?
-- Are the correct slices marked as HITL and AFK?
-
-Iterate until the user approves the breakdown.
+Check granularity, dependency order, story coverage, and HITL/AFK classification against the source plan. Reuse an approved breakdown. Ask only about decisions that change scope or dependencies; a complete request to create these issues already authorizes the requested publication. For a draft-only request, return the issue bodies and stop there.
 
 ### 5. Publish the issues to the issue tracker
 
 For each approved slice, publish a new issue to the issue tracker. Use the issue body template below. These issues are considered ready for AFK agents, so publish them with the correct triage label unless instructed otherwise.
 
 Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
+
+Before creating an issue, check for an existing issue covering that slice. On partial failure, retain confirmed issue URLs and resume only the missing creations; verify remote state before retrying a request whose outcome is uncertain. Report created, reused, and still-pending slices.
 
 <issue-template>
 ## Parent

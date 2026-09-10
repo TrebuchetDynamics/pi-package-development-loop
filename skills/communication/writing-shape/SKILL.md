@@ -9,7 +9,7 @@ The user has passed (or will pass) a markdown file of raw material. Treat it as 
 
 Then run a shaping session that produces a separate article document. Do not edit the raw material file — it is read-only to this skill.
 
-If the user did not say where to save the article, ask once and remember the path. The user will be editing the article file during the session; always re-read it before writing so their edits are preserved.
+Use the supplied file path or existing article artifact when available. For an in-chat draft, write in the conversation; ask for a path only when a saved artifact is required and no safe destination is evident. Always re-read a file before editing so the user's changes are preserved.
 
 </what-to-do>
 
@@ -18,7 +18,7 @@ If the user did not say where to save the article, ask once and remember the pat
 ## The loop
 
 1. **Read the pile.** Read the input file in full. Form a sense of what's in it.
-2. **Draft 2–3 candidate openings.** Each opening should imply a different thesis or angle for the article. Show all of them. Force the user to pick or compose a hybrid. The chosen opening defines what the rest of the article must do.
+2. **Choose the opening.** For collaborative exploration, offer 2–3 openings with distinct theses. For a complete-draft request, choose the strongest opening supported by the supplied material and continue through the whole article. Preserve a thesis the user already accepted.
 3. **Grow paragraph by paragraph.** After the opening lands, ask "given this opening, what does the reader need to hear next?" Pull material from the pile to answer. Argue about whether the next beat is a paragraph, a list, a table, a callout, a quote, a code block. Each format choice should be deliberate and defensible.
 4. **Append to the article file as you go.** Don't batch. Write each agreed paragraph or block immediately so the user can see the article taking shape.
 5. **Loop step 3 until the article is done.** The user decides when it's done.
